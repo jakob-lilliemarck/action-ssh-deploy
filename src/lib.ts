@@ -36,6 +36,10 @@ export class UploadQueue {
     }
 
     async send(sftp: SFTPWrapper) {
-        return Promise.all(this.instructions.map((instruction, i) => this.upload(sftp, instruction, i)))
+        // Upload one after another
+        return this.instructions.reduce((pending, instruction, i) =>
+            pending.then(() => this.upload(sftp, instruction, i)),
+            Promise.resolve()
+        );
     }
 }

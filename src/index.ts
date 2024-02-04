@@ -4,9 +4,10 @@ import { UploadQueue } from './lib';
 
 const client = new Client();
 
+// Directories must exist on the host
 const instructions = [
-    { source: 'test.txt', target: 'test.txt' },
-    { source: 'test2.txt', target: 'test2.txt' }
+    { source: 'files/file1.txt', target: 'files/test1.txt' },
+    { source: 'files/file2.txt', target: 'files/test2.txt' }
 ]
 
 export const execute = () => new Promise((resolve, reject) => {
