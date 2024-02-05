@@ -16,7 +16,11 @@ inputs:
 
   password:
     description: "Password"
-    required: false
+    required: true
+
+  privateKey:
+    description: "SSH private key"
+    required: true
 
 runs:
   using: "node20"

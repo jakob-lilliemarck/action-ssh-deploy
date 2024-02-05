@@ -14,8 +14,8 @@ retag() {
   # 2 MESSAGE
   ncc build src/index.ts
   git add .
-  # git push --delete origin $VERSION
-  # git tag -d $VERSION
+  git push --delete origin $VERSION
+  git tag -d $VERSION
   git commit -m "$1"
   git tag -a $VERSION -m "$1"
   git push --follow-tags
