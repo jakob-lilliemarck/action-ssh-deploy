@@ -1,32 +1,30 @@
-import { readFileSync } from 'fs';
-import { Client } from 'ssh2'
 import { UploadQueue } from './lib';
+import { getInput, setFailed } from '@actions/core';
+import { Client as SSHClient } from 'ssh2'
 
-const client = new Client();
+const sshClient = new SSHClient();
 
-// Directories must exist on the host
 const instructions = [
     { source: 'files/file1.txt', target: 'files/test1.txt' },
     { source: 'files/file2.txt', target: 'files/test2.txt' }
 ]
 
-export const execute = () => new Promise((resolve, reject) => {
-    client.on('ready', () => {
-        client.sftp(async (err, sftp) => {
-            if (err) {
-                reject(err);
-            }
-            const queue = new UploadQueue(instructions)
-            await queue.send(sftp)
-            client.end()
-            resolve(0)
-        });
-    }).connect({
-        host: '46.101.214.163',
-        port: 22,
-        username: 'root',
-        privateKey: readFileSync('/home/jakob/.ssh/id_rsa')
-    });
-})
+try {
+    const host = getInput("host");
+    const username = getInput("username")
+    const password = getInput("password")
+    const privateKey = getInput("privateKey")
 
-await execute()
+    const config = {
+        host,
+        port: 22,
+        username,
+        password,
+        privateKey
+    }
+
+    const queue = await UploadQueue.createUploadQueue(sshClient, config, instructions)
+    await queue.uploadAll()
+} catch (e) {
+    setFailed(e.message);
+}

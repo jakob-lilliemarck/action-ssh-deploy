@@ -1,0 +1,15 @@
+name: SSH & SFTP deploy
+
+on: [push]
+
+jobs:
+ main:
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: jakob-lilliemarck/action-ssh-deploy@v1
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          password: ${{ secrets.PASSWORD }}
+          privateKey: ${{ secrets.PRIVATE_KEY }}
