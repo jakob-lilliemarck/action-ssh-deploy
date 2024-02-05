@@ -8,8 +8,9 @@ jobs:
     steps:
       - run: |
           mkdir files
-          echo "test-1" > files/test-1.txt
-          echo "test-2" > files/test-2.txt
+          echo "test-1" > ./files/test-1.txt
+          echo "test-2" > ./files/test-2.txt
+          ls -R
 
       - uses: jakob-lilliemarck/action-ssh-deploy@v1
         with:
