@@ -6,8 +6,8 @@ import { Client } from 'ssh2';
 const sshClient = new Client();
 
 const instructions = [
-    { source: 'files/file1.txt', target: 'files/test1.txt' },
-    { source: 'files/file2.txt', target: 'files/test2.txt' }
+    { source: 'files/file-1.txt', target: 'files/test-1.txt' },
+    { source: 'files/file-2.txt', target: 'files/test-2.txt' }
 ]
 
 const main = async () => {
