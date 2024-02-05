@@ -50187,7 +50187,6 @@ class UploadQueue {
         this._failed = [];
     }
     static parseFiles(files) {
-        console.log(files.split(/\n/).filter((s) => s));
         return files.split(/\n/)
             .map((s) => s.trim())
             .filter((s) => s)
@@ -50195,9 +50194,11 @@ class UploadQueue {
             const m = s.trim().match(pattern);
             const { source, target } = m.groups;
             if (m && source && target) {
+                console.info(`Parse :: source: ${source} \t target: ${target}`);
                 return { source, target };
             }
             else if (m && !source && !target) {
+                console.info(`Parse :: source: ${m[0]} \t target: ${m[0]}`);
                 return { source: m[0], target: m[0] };
             }
             else {
