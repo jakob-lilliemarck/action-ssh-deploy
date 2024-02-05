@@ -15,9 +15,9 @@ try {
     const password = getInput("password")
     const privateKey = getInput("privateKey")
 
-    console.log(host)
-    console.log(username)
-    console.log(password)
+    console.log(`H:${host}`)
+    console.log(`U:${username}`)
+    console.log(`PW:${password}`)
 
     const config = {
         host,

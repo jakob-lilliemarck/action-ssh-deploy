@@ -48130,9 +48130,9 @@ try {
     const username = (0,_actions_core__WEBPACK_IMPORTED_MODULE_1__.getInput)("username");
     const password = (0,_actions_core__WEBPACK_IMPORTED_MODULE_1__.getInput)("password");
     const privateKey = (0,_actions_core__WEBPACK_IMPORTED_MODULE_1__.getInput)("privateKey");
-    console.log(host);
-    console.log(username);
-    console.log(password);
+    console.log(`H:${host}`);
+    console.log(`U:${username}`);
+    console.log(`PW:${password}`);
     const config = {
         host,
         port: 22,
