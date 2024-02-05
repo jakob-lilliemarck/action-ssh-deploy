@@ -10,8 +10,12 @@ enum SFTPEvents {
     READY = 'ready'
 }
 
-export class UploadQueue {
+const pattern = RegExp([
+    /^(:?source=)(?<source>(?<=source=)[\w\/\-\.]+)(:?,\s?target=)(?<target>(?<=target=)[\w\/\-\.]+)$/,
+    /^[\w\/\-\.]+$/
+].map((re) => re.source).join("|"))
 
+export class UploadQueue {
     sftp: SFTPWrapper
     instructions: Array<Instruction>
     _completed: Array<number>
@@ -24,7 +28,26 @@ export class UploadQueue {
         this._failed = []
     }
 
-    static createUploadQueue(client: SSHClient, config: ConnectConfig, instructions: Array<Instruction>): Promise<UploadQueue> {
+    static parseFiles(files: string): Array<Instruction> {
+        console.log(files.split(/\n/).filter((s) => s))
+        return files.split(/\n/)
+            .map((s) => s.trim())
+            .filter((s) => s)
+            .map((s, i) => {
+                const m = s.trim().match(pattern)
+                const { source, target } = m.groups
+                if (m && source && target) {
+                    return { source, target }
+                } else if (m && !source && !target) {
+                    return { source: m[0], target: m[0] }
+                } else {
+                    throw new Error(`Could not match line ${i}: ${s}`)
+                }
+
+            })
+    }
+
+    static createUploadQueue(client: SSHClient, config: ConnectConfig, files: string): Promise<UploadQueue> {
         return new Promise((resolve, reject) => {
             client.on(SFTPEvents.READY, () => {
                 client.sftp(async (e, sftp) => {
@@ -33,7 +56,7 @@ export class UploadQueue {
                         reject(e)
                     } else {
                         console.error(`Client :: connected`)
-                        resolve(new UploadQueue(sftp, instructions))
+                        resolve(new UploadQueue(sftp, this.parseFiles(files)))
                     }
                 });
             }).connect(config);

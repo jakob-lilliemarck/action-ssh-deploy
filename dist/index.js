@@ -50171,6 +50171,10 @@ var SFTPEvents;
 (function (SFTPEvents) {
     SFTPEvents["READY"] = "ready";
 })(SFTPEvents || (SFTPEvents = {}));
+const pattern = RegExp([
+    /^(:?source=)(?<source>(?<=source=)[\w\/\-\.]+)(:?,\s?target=)(?<target>(?<=target=)[\w\/\-\.]+)$/,
+    /^[\w\/\-\.]+$/
+].map((re) => re.source).join("|"));
 class UploadQueue {
     sftp;
     instructions;
@@ -50182,7 +50186,26 @@ class UploadQueue {
         this._completed = [];
         this._failed = [];
     }
-    static createUploadQueue(client, config, instructions) {
+    static parseFiles(files) {
+        console.log(files.split(/\n/).filter((s) => s));
+        return files.split(/\n/)
+            .map((s) => s.trim())
+            .filter((s) => s)
+            .map((s, i) => {
+            const m = s.trim().match(pattern);
+            const { source, target } = m.groups;
+            if (m && source && target) {
+                return { source, target };
+            }
+            else if (m && !source && !target) {
+                return { source: m[0], target: m[0] };
+            }
+            else {
+                throw new Error(`Could not match line ${i}: ${s}`);
+            }
+        });
+    }
+    static createUploadQueue(client, config, files) {
         return new Promise((resolve, reject) => {
             client.on(SFTPEvents.READY, () => {
                 client.sftp(async (e, sftp) => {
@@ -50192,7 +50215,7 @@ class UploadQueue {
                     }
                     else {
                         console.error(`Client :: connected`);
-                        resolve(new UploadQueue(sftp, instructions));
+                        resolve(new UploadQueue(sftp, this.parseFiles(files)));
                     }
                 });
             }).connect(config);
@@ -50228,31 +50251,26 @@ var lib = __nccwpck_require__(5107);
 
 
 
-// import { readFileSync } from 'fs';
 const sshClient = new lib.Client();
-const instructions = [
-    { source: 'files/test-1.txt', target: 'files/test-1.txt' },
-    { source: 'files/test-2.txt', target: 'files/test-2.txt' }
-];
 const main = async () => {
     try {
         const host = (0,core.getInput)("host");
         const username = (0,core.getInput)("username");
         const passphrase = (0,core.getInput)("password");
         const privateKey = (0,core.getInput)("privateKey");
+        const files = (0,core.getInput)("files");
         const config = {
-            host, // '46.101.214.163',
+            host,
             port: 22,
-            username, // 'root',
-            passphrase, // 'test',
-            privateKey // readFileSync('/home/jakob/.ssh/gh_id')
+            username,
+            passphrase,
+            privateKey
         };
-        const queue = await UploadQueue.createUploadQueue(sshClient, config, instructions);
+        const queue = await UploadQueue.createUploadQueue(sshClient, config, files);
         await queue.uploadAll();
         sshClient.end();
     }
     catch (e) {
-        // console.error('err', e)
         (0,core.setFailed)(e.message);
     }
 };

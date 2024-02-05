@@ -18,3 +18,6 @@ jobs:
           username: ${{ secrets.USERNAME }}
           password: ${{ secrets.PASSWORD }}
           privateKey: ${{ secrets.PRIVATE_KEY }}
+          files: |
+            files/test-1.txt
+            source=files/test-2.txt,target=files/test-2.txt

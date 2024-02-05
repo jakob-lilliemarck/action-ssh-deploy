@@ -1,14 +1,8 @@
 import { UploadQueue } from './lib';
 import { setFailed, getInput } from '@actions/core';
 import { Client } from 'ssh2';
-// import { readFileSync } from 'fs';
 
 const sshClient = new Client();
-
-const instructions = [
-    { source: 'files/test-1.txt', target: 'files/test-1.txt' },
-    { source: 'files/test-2.txt', target: 'files/test-2.txt' }
-]
 
 const main = async () => {
     try {
@@ -16,20 +10,26 @@ const main = async () => {
         const username = getInput("username")
         const passphrase = getInput("password")
         const privateKey = getInput("privateKey")
+        const files = getInput("files")
 
         const config = {
-            host,           // '46.101.214.163',
+            host,
             port: 22,
-            username,       // 'root',
-            passphrase,     // 'test',
-            privateKey      // readFileSync('/home/jakob/.ssh/gh_id')
+            username,
+            passphrase,
+            privateKey
         }
 
-        const queue = await UploadQueue.createUploadQueue(sshClient, config, instructions)
+        const queue = await UploadQueue.createUploadQueue(
+            sshClient,
+            config,
+            files
+        )
+
         await queue.uploadAll()
+
         sshClient.end()
     } catch (e) {
-        // console.error('err', e)
         setFailed(e.message);
     }
 }

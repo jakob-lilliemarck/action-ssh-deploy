@@ -18,6 +18,10 @@ inputs:
     description: "SSH private key"
     required: true
 
+  files:
+    description: "Files to transfer to the host"
+    required: true
+
 runs:
   using: "node20"
   main: "dist/index.js"
