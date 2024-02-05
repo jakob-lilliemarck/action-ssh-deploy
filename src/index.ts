@@ -18,14 +18,14 @@ const helper = async (config) => {
 try {
     const host = getInput("host");
     const username = getInput("username")
-    const password = getInput("password")
+    const passphrase = getInput("password")
     const privateKey = getInput("privateKey")
 
     const config = {
         host,           // '46.101.214.163',
         port: 22,
         username,       // 'root',
-        password,
+        passphrase,
         privateKey      // readFileSync('/home/jakob/.ssh/id_rsa')
     }
 

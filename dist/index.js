@@ -50237,13 +50237,13 @@ const helper = async (config) => {
 try {
     const host = (0,core.getInput)("host");
     const username = (0,core.getInput)("username");
-    const password = (0,core.getInput)("password");
+    const passphrase = (0,core.getInput)("password");
     const privateKey = (0,core.getInput)("privateKey");
     const config = {
         host, // '46.101.214.163',
         port: 22,
         username, // 'root',
-        password,
+        passphrase,
         privateKey // readFileSync('/home/jakob/.ssh/id_rsa')
     };
     helper(config).then(() => {
