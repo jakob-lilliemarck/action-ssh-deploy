@@ -15,6 +15,10 @@ try {
     const password = getInput("password")
     const privateKey = getInput("privateKey")
 
+    console.log(host)
+    console.log(username)
+    console.log(password)
+
     const config = {
         host,
         port: 22,

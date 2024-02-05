@@ -10,10 +10,6 @@ inputs:
     description: "User to connect as"
     required: true
 
-  key:
-    description: "ssh key"
-    required: true
-
   password:
     description: "Password"
     required: true
