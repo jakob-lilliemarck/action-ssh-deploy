@@ -3,7 +3,6 @@
   "version": "1.0.0",
   "description": "Connect and deploy code over ssh",
   "main": "dist/index.js",
-  "type": "module",
   "scripts": {
     "test": "jest",
     "build": "ncc build src/index.ts"

@@ -11,6 +11,7 @@ enum SFTPEvents {
 }
 
 export class UploadQueue {
+
     sftp: SFTPWrapper
     instructions: Array<Instruction>
     _completed: Array<number>
@@ -26,10 +27,10 @@ export class UploadQueue {
     static createUploadQueue(client: SSHClient, config: ConnectConfig, instructions: Array<Instruction>): Promise<UploadQueue> {
         return new Promise((resolve, reject) => {
             client.on(SFTPEvents.READY, () => {
-                client.sftp(async (err, sftp) => {
-                    if (err) {
-                        client.end()
-                        reject(err)
+                client.sftp(async (e, sftp) => {
+                    if (e) {
+                        console.error('', e)
+                        reject(e)
                     } else {
                         resolve(new UploadQueue(sftp, instructions))
                     }
