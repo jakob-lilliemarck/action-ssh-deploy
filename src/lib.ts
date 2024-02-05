@@ -29,9 +29,10 @@ export class UploadQueue {
             client.on(SFTPEvents.READY, () => {
                 client.sftp(async (e, sftp) => {
                     if (e) {
-                        console.error('', e)
+                        console.error(`Client :: ${e}`)
                         reject(e)
                     } else {
+                        console.error(`Client :: connected`)
                         resolve(new UploadQueue(sftp, instructions))
                     }
                 });
@@ -42,6 +43,7 @@ export class UploadQueue {
 
     private _upload(instruction: Instruction, i: number) {
         return new Promise((resolve, reject) => {
+            console.info(`Upload :: ${instruction.source} :: started`)
             this.sftp.fastPut(
                 instruction.source,
                 instruction.target,
@@ -49,9 +51,11 @@ export class UploadQueue {
                 (e) => {
                     if (e) {
                         this._failed.push(i)
+                        console.error(`Upload :: ${instruction.source} :: ${e}`)
                         reject(i)
                     } else {
                         this._completed.push(i)
+                        console.info(`Upload :: ${instruction.source} :: complete`)
                         resolve(i)
                     }
                 }
