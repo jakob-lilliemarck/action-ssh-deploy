@@ -23,7 +23,7 @@ jobs:
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
-          password: ${{ secrets.PASSWORD }}
+          passphrase: ${{ secrets.PASSWORD }}
           privateKey: ${{ secrets.PRIVATE_KEY }}
           files: |
             files/test-1.txt

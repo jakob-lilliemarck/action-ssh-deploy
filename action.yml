@@ -10,8 +10,8 @@ inputs:
     description: "User to connect as"
     required: true
 
-  password:
-    description: "Password"
+  passphrase:
+    description: "SSH key passphrase"
     required: true
 
   privateKey:
