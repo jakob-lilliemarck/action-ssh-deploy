@@ -50166,245 +50166,229 @@ var __webpack_exports__ = {};
 // ESM COMPAT FLAG
 __nccwpck_require__.r(__webpack_exports__);
 
-// EXTERNAL MODULE: external "fs"
-var external_fs_ = __nccwpck_require__(7147);
-;// CONCATENATED MODULE: ./src/lib.ts
+;// CONCATENATED MODULE: ./src/path.ts
+class Path {
+    _path;
+    _parent;
+    _isAbsolute;
+    static absRoot = '/';
+    static relRoot = './';
+    static base = new Set([Path.absRoot, Path.relRoot]);
+    constructor(path) {
+        const isAbsolute = /^\//.test(path);
+        this._path = path;
+        this._isAbsolute = isAbsolute;
+        this._parent = Path.base.has(this._path) ? undefined : this.getParent(isAbsolute);
+    }
+    get path() {
+        return this._path;
+    }
+    get parent() {
+        return this._parent;
+    }
+    get isAbsolute() {
+        return this._isAbsolute;
+    }
+    getParent(isAbsolute) {
+        const m = this.path.match(/^[\w\/]+(?=\/)/);
+        const parent = m ? m[0] : isAbsolute ? Path.absRoot : Path.relRoot;
+        return new Path(parent);
+    }
+    explode() {
+        const [first, ...rest] = this.path.split('/');
+        const { paths } = rest.reduce(({ paths, previous }, current) => {
+            const repr = `${previous}/${current}`;
+            if (repr) {
+                return { paths: [...paths, new Path(repr)], previous: repr };
+            }
+            else {
+                return { paths, previous };
+            }
+        }, { paths: [new Path(first)], previous: first });
+        return paths.filter(({ path }) => path);
+    }
+}
 
-var SFTPEvents;
-(function (SFTPEvents) {
-    SFTPEvents["READY"] = "ready";
-})(SFTPEvents || (SFTPEvents = {}));
-const pattern = RegExp([
-    /^(:?source=)(?<source>(?<=source=)[\w\/\-\.]+)(:?,\s?target=)(?<target>(?<=target=)[\w\/\-\.]+)$/,
-    /^[\w\/\-\.]+$/
-].map((re) => re.source).join("|"));
-class UploadQueue {
-    sftp;
-    instructions;
-    _completed;
-    _failed;
-    constructor(sftp, instructions) {
-        this.sftp = sftp;
-        this.instructions = instructions;
-        this._completed = [];
-        this._failed = [];
+;// CONCATENATED MODULE: ./src/instruction.ts
+
+class Instruction {
+    _source;
+    _target;
+    static EXPLICIT = /^(:?source=)(?<source>(?<=source=)[\w\/\-\.]+)(:?,\s?target=)(?<target>(?<=target=)[\w\/\-\.]+)$/;
+    static IMPLICIT = /^[\w\/\-\.]+$/;
+    static UNION_PATTERN = RegExp([
+        Instruction.EXPLICIT,
+        Instruction.IMPLICIT
+    ].map((re) => re.source).join("|"));
+    constructor({ source, target }) {
+        if (!(source && target)) {
+            throw new Error(`Invalid instruction: ${JSON.stringify({ source, target }, null, 2)}`);
+        }
+        this._source = Instruction.ensurePath(source);
+        this._target = Instruction.ensurePath(target);
     }
-    /**
-     *
-     * @param {SSHClient} client ssh2 "Client" instance
-     * @param {UploadConfig} config ssh credentials and upload configuration
-     * @returns {Promise<UploadQueue>} UploadQueue instance
-     */
-    static createUploadQueue(client, config) {
-        return new Promise((resolve, reject) => {
-            client.on(SFTPEvents.READY, () => {
-                client.sftp(async (e, sftp) => {
-                    if (e) {
-                        console.error(`Client :: ${e}`);
-                        reject(e);
-                    }
-                    else {
-                        console.error(`Client :: connected`);
-                        resolve(new UploadQueue(sftp, this.parseFiles(config.files)));
-                    }
-                });
-            }).connect(config);
-        });
+    get source() {
+        return this._source;
     }
-    /**
-     *
-     * @param {string} files String representation of all files and directories to upload.
-     * @returns {Array<Instructions>} Upload instructions for UploadQueue
-     */
-    static parseFiles(files) {
-        return files.split(/\n/)
+    get target() {
+        return this._target;
+    }
+    static ensurePath(repr) {
+        return repr instanceof Path ? repr : new Path(repr);
+    }
+    explodeTargetParent() {
+        return this.target.parent.explode().map((target) => new Instruction({
+            source: this.source,
+            target,
+        }));
+    }
+    static fromString(repr) {
+        return repr.split(/\n/)
             .map((s) => s.trim())
             .filter((s) => s)
             .map((s, i) => {
-            const m = s.trim().match(pattern);
+            const m = s.trim().match(Instruction.UNION_PATTERN);
             const { source, target } = m.groups;
             if (m && source && target) {
-                console.info(`Parse :: source: ${source} \t target: ${target}`);
-                return { source, target };
+                return new Instruction({ source, target });
             }
             else if (m && !source && !target) {
-                console.info(`Parse :: source: ${m[0]} \t target: ${m[0]}`);
-                return { source: m[0], target: m[0] };
+                return new Instruction({ source: m[0], target: m[0] });
             }
             else {
                 throw new Error(`Could not match line ${i}: ${s}`);
             }
         });
     }
-    /**
-     *
-     * @param {string} target The target location of a file to be uploaded
-     * @returns {string} The target directory location of the file
-     */
-    static getTargetDirectory(target) {
-        const p = /^[\w\/]+(?=\/)/;
-        const m = target.match(p);
-        return m ? m[0] : undefined;
+}
+
+// EXTERNAL MODULE: external "fs"
+var external_fs_ = __nccwpck_require__(7147);
+;// CONCATENATED MODULE: ./src/queue.ts
+
+
+var SFTPEvents;
+(function (SFTPEvents) {
+    SFTPEvents["READY"] = "ready";
+})(SFTPEvents || (SFTPEvents = {}));
+class Queue {
+    _sftp;
+    _instructions;
+    _existing;
+    constructor({ sftp, instructions, existing }) {
+        this._sftp = sftp;
+        this._instructions = instructions;
+        this._existing = existing ?? new Set();
     }
-    /**
-     *
-     * @param {string} path The path to match with
-     * @param {Array<string>} paths Array of paths to match against
-     * @returns {string} The longest matching path
-     */
-    static getLongestMatch(path, paths) {
-        const { m } = paths.reduce((a, p) => {
-            const m = path.match(p);
-            if (m) {
-                const n = p.split('/').length;
-                return n > a.n ? { n, m: m[0] } : a;
+    get instructions() {
+        return this._instructions;
+    }
+    static createUploadQueue(client, config) {
+        return new Promise((resolve, reject) => {
+            client.on(SFTPEvents.READY, () => {
+                client.sftp(async (e, sftp) => {
+                    if (e) {
+                        console.error(`${Queue.name}::createUploadQueue::${e}`);
+                        reject(e);
+                    }
+                    else {
+                        console.info(`${Queue.name}::createUploadQueue::connected`);
+                        resolve(new Queue({
+                            sftp,
+                            instructions: Instruction.fromString(config.files)
+                        }));
+                    }
+                });
+            }).connect(config);
+        });
+    }
+    exist({ path }) {
+        return new Promise((resolve) => {
+            if (this._existing.has(path)) {
+                // console.debug(`${Queue.name}::exist::${path}::true`)
+                resolve(true);
             }
-            return a;
-        }, { n: 0, m: '' });
-        return m;
+            else {
+                this._sftp.exists(path, (e) => {
+                    if (e) {
+                        // console.debug(`${Queue.name}::exist::${path}::true`)
+                        this._existing.add(path);
+                        resolve(true);
+                    }
+                    else {
+                        // console.debug(`${Queue.name}::exist::${path}::false`)
+                        resolve(false);
+                    }
+                });
+            }
+        });
     }
-    /**
-     *
-     * @param {string} path Path to split
-     * @returns {Array<string>} Paths to each directory leading up to the specified directory
-     */
-    static splitPath(path) {
-        const [first, ...rest] = path.split('/');
-        const { paths } = rest.reduce(({ paths, previous }, current) => {
-            const path = `${previous}/${current}`;
-            return {
-                paths: [...paths, path],
-                previous: path
-            };
-        }, { paths: [first], previous: first });
-        return paths.filter((s) => s);
+    mkdir(instruction) {
+        return new Promise(async (resolve, reject) => {
+            const exist = await this.exist(instruction.target);
+            if (exist) {
+                resolve();
+            }
+            else {
+                this._sftp.mkdir(instruction.target.path, (e) => {
+                    if (e) {
+                        console.error(`${Queue.name}::mkdir::${e}`);
+                        reject(e);
+                    }
+                    else {
+                        console.info(`${Queue.name}::mkdir::${instruction.target.path}`);
+                        this._existing.add(instruction.target.path);
+                        resolve();
+                    }
+                });
+            }
+        });
     }
-    /**
-     *
-     * @param {string} a Path to subtract from
-     * @param {string} b Path to subtract with
-     * @returns {string} The result of subtraction
-     */
-    static subPath(a, b) {
-        const p = RegExp(`^${b}`);
-        const m = p.test(a);
-        return m && b ? a.replace(RegExp(`^${b}`), '').replace(/^\//, '') : a;
-    }
-    /**
-     *
-     * @param {Instruction} instruction Instruction of how to copy source files to a target location on the remote host
-     * @returns {Promise<void>}
-     */
     upload(instruction) {
         return new Promise((resolve, reject) => {
-            this.sftp.fastPut(instruction.source, instruction.target, {}, (e) => {
+            this._sftp.fastPut(instruction.source.path, instruction.target.path, {}, (e) => {
                 if (e) {
-                    console.error(`Upload :: ${instruction.source} :: ${e}`);
+                    console.error(`${Queue.name}::upload::${e}`);
                     reject();
                 }
                 else {
-                    console.info(`Upload :: ${instruction.source} :: complete`);
+                    console.info(`${Queue.name}::upload::${instruction.source.path}`);
                     resolve();
                 }
             });
         });
     }
-    /**
-     *
-     * @param {string} path Path to test
-     * @returns {boolean}
-     */
-    async exist(path) {
-        return new Promise((resolve, reject) => {
-            this.sftp.exists(path, (e) => {
-                if (e) {
-                    resolve(true);
-                }
-                else {
-                    resolve(false);
-                }
-            });
-        });
-    }
-    /**
-     *
-     * @param {string} path Path to create on the remote host. The parent location must exist.
-     * @returns {Promise<void>}
-     */
-    async mkdir(path) {
-        console.info(`Mkdir :: ${path}`);
-        return new Promise((resolve, reject) => {
-            if (!path) {
-                reject(new Error(`Mkdir :: Malformed directory path "${path}"`));
-            }
-            this.sftp.mkdir(path, (e) => {
-                if (e) {
-                    console.error(e);
-                    reject(e);
-                }
-                else {
-                    resolve();
-                }
-            });
-        });
-    }
-    /**
-     *
-     * @param {Array<string>} paths Paths to create, must be in order from parent to child
-     * @returns {void}
-     */
-    async recvMkdir(paths) {
-        const [current, ...rest] = paths;
-        const exist = await this.exist(current);
-        if (!exist) {
-            await this.mkdir(current);
-        }
-        if (rest.length > 0) {
-            await this.recvMkdir(rest);
-        }
-        return;
-    }
-    /**
-     *
-     * @param {Instruction} instruction Instruction of how to copy source files to a target location on the remote host
-     * @param {Array<string>} [exists=[]] Accumulator of created directories
-     * @returns {Promise<void>}
-     */
-    async recvUpload({ source, target }, exists = []) {
-        const stat = (0,external_fs_.statSync)(source);
-        if (stat.isDirectory()) {
-            const exist = await this.exist(target);
-            if (!exist) {
-                await this.mkdir(target);
-            }
-            return await (0,external_fs_.readdirSync)(source).reduce((pending, file) => pending.then(() => this.recvUpload({
-                source: `${source}/${file}`,
-                target: `${target}/${file}`
-            }, [...exists, target])), Promise.resolve());
+    async recvMkdir(instructions, existing = new Set()) {
+        const [current, ...remaining] = instructions;
+        await this.mkdir(current);
+        if (remaining.length > 0) {
+            await this.recvMkdir(remaining, new Set([...existing, current.target.path]));
         }
         else {
-            // TODO - clean this up. Perhaps one or a few additional helper functions?
-            const dir = UploadQueue.getTargetDirectory(target);
-            const ext = UploadQueue.getLongestMatch(dir, exists);
-            const cre = UploadQueue.subPath(dir, ext);
-            const make = UploadQueue.splitPath(cre);
-            // ENDOF TOOD
-            if (make.length > 0) {
-                await this.recvMkdir(make);
-            }
-            await this.upload({
-                source,
-                target
-            });
+            return existing;
         }
     }
-    /**
-     *
-     * @param {Array<Instruction>} instructions Instruction of how to copy source files to a target location on the remote host
-     * @returns {Promise<void>}
-     */
-    async uploadAll(instructions) {
-        return await instructions.reduce((pending, instruction) => pending.then(() => this.recvUpload(instruction)), Promise.resolve());
+    async recvUpload(instruction) {
+        // Create the parent directory if it doesn't exist
+        await this.recvMkdir(instruction.explodeTargetParent());
+        if ((0,external_fs_.statSync)(instruction.source.path).isDirectory()) {
+            // If source is a directory, create it
+            await this.mkdir(instruction);
+            // Then recursivly sync the source and target directories
+            await (0,external_fs_.readdirSync)(instruction.source.path).reduce((pending, path) => pending.then(() => this.recvUpload(new Instruction({
+                source: `${instruction.source.path}/${path}`,
+                target: `${instruction.target.path}/${path}`
+            }))), Promise.resolve());
+        }
+        else {
+            // If source is a file, upload it
+            await this.upload(instruction);
+        }
+    }
+    async uploadAll() {
+        await this.instructions.reduce((pending, instruction) => {
+            return pending.then(() => this.recvUpload(instruction));
+        }, Promise.resolve());
     }
 }
 
@@ -50444,22 +50428,17 @@ const getMockedConfig = () => ({
     privateKey: (0,external_fs_.readFileSync)('/home/jakob/.ssh/gh_id'),
     passphrase: 'test',
     files: `
-        files/nested1/nested2/test-4.txt
-        files/nested1/test-3.txt
-        files/test-1.txt
-        files/test-2.txt
+        files
+        files/nested1
+        source=files, target=foo
+        source=files/nested1, target=bar
     `
 });
 const main = async () => {
     try {
         const config = getMockedConfig(); // getUploadConfig()
-        const queue = await UploadQueue.createUploadQueue(ssh, config);
-        // TODO - absolute paths!
-        await queue.uploadAll([
-            { source: 'files', target: 'bar' },
-            { source: 'files/test-1.txt', target: 'foo/bar/baz/test-1.txt' },
-            { source: 'files/test-1.txt', target: '/foo/baz/bar/test-1.txt' }
-        ]);
+        const queue = await Queue.createUploadQueue(ssh, config);
+        await queue.uploadAll();
         console.log(`Client :: closing connection`);
         ssh.end();
     }
