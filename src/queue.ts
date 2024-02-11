@@ -20,11 +20,13 @@ export interface UploadConfig extends ConnectConfig {
 }
 
 export class Queue {
+    private _ssh: SSHClient
     private _sftp: SFTPWrapper
     private _instructions: Array<Instruction>
     private _existing: Set<string>
 
-    constructor({ sftp, instructions, existing }: { sftp: SFTPWrapper, instructions: Array<Instruction>, existing?: Set<string> }) {
+    constructor({ ssh, sftp, instructions, existing }: { ssh: SSHClient, sftp: SFTPWrapper, instructions: Array<Instruction>, existing?: Set<string> }) {
+        this._ssh = ssh
         this._sftp = sftp
         this._instructions = instructions
         this._existing = existing ?? new Set<string>()
@@ -34,16 +36,17 @@ export class Queue {
         return this._instructions
     }
 
-    static createUploadQueue(client: SSHClient, config: UploadConfig): Promise<Queue> {
+    static createUploadQueue(ssh: SSHClient, config: UploadConfig): Promise<Queue> {
         return new Promise((resolve, reject) => {
-            client.on(SFTPEvents.READY, () => {
-                client.sftp(async (e, sftp) => {
+            ssh.on(SFTPEvents.READY, () => {
+                ssh.sftp(async (e, sftp) => {
                     if (e) {
                         console.error(`${Queue.name}::createUploadQueue::${e}`)
                         reject(e)
                     } else {
                         console.info(`${Queue.name}::createUploadQueue::connected`)
                         resolve(new Queue({
+                            ssh,
                             sftp,
                             instructions: Instruction.fromString(config.files)
                         }))
@@ -146,5 +149,6 @@ export class Queue {
         await this.instructions.reduce((pending, instruction) => {
             return pending.then(() => this.recvUpload(instruction))
         }, Promise.resolve());
+        this._ssh.end()
     }
 }

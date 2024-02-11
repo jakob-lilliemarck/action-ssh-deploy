@@ -32,8 +32,7 @@ const main = async () => {
         const config = getUploadConfig()
         const queue = await Queue.createUploadQueue(ssh, config)
         await queue.uploadAll()
-        console.log(`Client :: closing connection`)
-        ssh.end()
+        console.log(`Client::connectionClosed`)
     } catch (e) {
         setFailed(e.message);
     }
