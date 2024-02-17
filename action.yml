@@ -1,0 +1,27 @@
+name: "ssh deploy"
+description: "Connect and deploy code over ssh"
+author: Jakob Lilliemarck
+inputs:
+  host:
+    description: "Host IP"
+    required: true
+
+  username:
+    description: "User to connect as"
+    required: true
+
+  passphrase:
+    description: "SSH key passphrase"
+    required: true
+
+  privateKey:
+    description: "SSH private key"
+    required: true
+
+  files:
+    description: "Files to transfer to the host"
+    required: true
+
+runs:
+  using: "node20"
+  main: "dist/index.js"
