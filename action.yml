@@ -1,4 +1,4 @@
-name: "SSH & SFTP deploy"
+name: "SSH & SFTP Deploy"
 description: "Connect and deploy with ssh and sftp "
 author: Jakob Lilliemarck
 inputs:
