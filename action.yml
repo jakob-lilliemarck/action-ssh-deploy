@@ -1,5 +1,5 @@
-name: "ssh deploy"
-description: "Connect and deploy code over ssh"
+name: "ssh & sftp deploy"
+description: "Connect and deploy with ssh and sftp "
 author: Jakob Lilliemarck
 inputs:
   host:
