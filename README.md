@@ -2,7 +2,7 @@
 Connect and deploy code over ssh.
 
 ```yml
-name: Example
+name: SSH & SFTP deploy
 
 on:
   push:
@@ -26,6 +26,6 @@ jobs:
           passphrase: ${{ secrets.PASSWORD }}
           privateKey: ${{ secrets.PRIVATE_KEY }}
           files: |
-            files/test-1.txt
-            source=files/test-2.txt,target=files/test-2.txt
+            files
+            source=files/test-2.txt,target=test-2.txt
 ```
